@@ -3,6 +3,7 @@ export 'lw006_constants.dart';
 export 'lw006_data_codec.dart';
 export 'lw006_device_session.dart';
 export 'lw006_export_data_store.dart';
+export 'lw006_debug_log_file.dart';
 export 'lw006_tracked_file.dart';
 export 'lw006_disconnect_event.dart';
 export 'lw006_lora_conn_helpers.dart';

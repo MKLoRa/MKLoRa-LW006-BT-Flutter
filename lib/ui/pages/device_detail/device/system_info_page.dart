@@ -15,6 +15,8 @@ import '../../../../ui/widgets/common_confirm_dialog.dart';
 import '../../../../ui/widgets/device_detail/settings_widgets.dart';
 import '../../../../ui/widgets/dfu_progress_dialog.dart';
 import '../../../../viewmodels/ble_scan_view_model.dart';
+import 'log_data_page.dart';
+import 'self_test_page.dart';
 
 enum SystemInfoDfuResult {
   success,
@@ -39,6 +41,8 @@ class _SystemInfoPageState extends State<SystemInfoPage> {
   String _mac = '-';
   String _battery = '-';
   var _dfuRunning = false;
+  int _selfTestTapCount = 0;
+  int _selfTestLastTapMs = 0;
 
   @override
   void initState() {
@@ -76,6 +80,36 @@ class _SystemInfoPageState extends State<SystemInfoPage> {
   String _textOrDash(List<int> data) {
     final text = Lw006ParamHelpers.bytesToString(data);
     return text.isEmpty ? '-' : text;
+  }
+
+  void _onHiddenSelfTestTap() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _selfTestLastTapMs > 500) {
+      _selfTestTapCount = 0;
+      _selfTestLastTapMs = now;
+    } else {
+      _selfTestTapCount++;
+      if (_selfTestTapCount == 2) {
+        _selfTestTapCount = 0;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SelfTestPage(session: widget.session),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openDebuggerMode() {
+    if (_mac == '-' || _mac.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LogDataPage(
+          session: widget.session,
+          deviceMac: _mac,
+        ),
+      ),
+    );
   }
 
   Future<void> _updateFirmware() async {
@@ -234,6 +268,17 @@ class _SystemInfoPageState extends State<SystemInfoPage> {
           _infoRow('Product Model', _model),
           _infoRow('MAC Address', _mac),
           _infoRow('Battery', _battery),
+          SettingsCard(
+            child: SettingsNavRow(
+              title: 'Debugger Mode',
+              onTap: _openDebuggerMode,
+            ),
+          ),
+          GestureDetector(
+            onTap: _onHiddenSelfTestTap,
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox(height: 200),
+          ),
         ],
       ),
     );

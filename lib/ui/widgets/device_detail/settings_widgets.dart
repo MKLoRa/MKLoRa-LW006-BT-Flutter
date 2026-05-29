@@ -409,35 +409,3 @@ class SettingsToggleRow extends StatelessWidget {
     );
   }
 }
-
-class SettingsCheckboxRow extends StatelessWidget {
-  const SettingsCheckboxRow({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final bool value;
-  final ValueChanged<bool?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return CheckboxListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: DeviceDetailTheme.textPrimary,
-        ),
-      ),
-      value: value,
-      activeColor: DeviceDetailTheme.primary,
-      controlAffinity: ListTileControlAffinity.trailing,
-      onChanged: onChanged,
-    );
-  }
-}

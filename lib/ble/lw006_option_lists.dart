@@ -38,16 +38,24 @@ class Lw006OptionLists {
   ];
 
   static const buzzerSounds = ['No', 'Alarm', 'Normal'];
+  static const vibrationIntensities = ['No', 'Low', 'Medium', 'High'];
   static const lowPowerPercents = ['10%', '20%', '30%', '40%', '50%', '60%'];
   static const wifiDataTypes = ['DAS', 'Customer'];
   static const gpsDataTypes = ['DAS', 'Customer'];
   static const gpsPosSystems = ['GPS', 'Beidou', 'GPS&Beidou'];
+  static const gpsModuleTypes = ['Traditional GPS module', 'Lora Cloud'];
 
   static const alarmTypes = ['NO', 'Alert', 'SOS'];
   static const payloadTypes = ['Unconfirmed', 'Confirmed'];
   static const retransmissionTimes = ['0', '1', '2', '3'];
 
   static const bleFixMechanism = ['Time Priority', 'RSSI Priority'];
+  static const bleScanPhyTypes = [
+    '1M PHY(BLE 4.x)',
+    '1M PHY(BLE 5)',
+    '1M PHY(BLE 4.x + BLE 5)',
+    'Coded PHY(BLE 5)',
+  ];
   static const wifiFixMechanism = ['RSSI Priority', 'Time Priority'];
   static const filterRelationship = [
     'Null',
@@ -103,5 +111,31 @@ class Lw006OptionLists {
 
   static int regionDeviceToPicker(int value) {
     return value > 2 ? value - 3 : value;
+  }
+
+  static int vibrationDeviceValue(int pickerIndex) {
+    switch (pickerIndex) {
+      case 1:
+        return 10;
+      case 2:
+        return 50;
+      case 3:
+        return 80;
+      default:
+        return 0;
+    }
+  }
+
+  static int vibrationPickerIndex(int deviceValue) {
+    switch (deviceValue) {
+      case 10:
+        return 1;
+      case 50:
+        return 2;
+      case 80:
+        return 3;
+      default:
+        return 0;
+    }
   }
 }

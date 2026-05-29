@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../ble/lw006_device_session.dart';
 import '../../../../../ble/lw006_param_helpers.dart';
 import '../../../../../ble/lw006_protocol_named_api.dart';
+import '../../../../../ui/theme/device_detail_theme.dart';
 import '../../../../../ui/widgets/ble_loading_overlay.dart';
 import '../../../../../ui/widgets/common_confirm_dialog.dart';
 import '../../../../../ui/widgets/device_detail/settings_widgets.dart';
@@ -20,6 +21,7 @@ class OnOffSettingsPage extends StatefulWidget {
 class _OnOffSettingsPageState extends State<OnOffSettingsPage> {
   bool _shutdownPayload = false;
   bool _offByButton = false;
+  bool _autoPowerOn = false;
 
   @override
   void initState() {
@@ -32,10 +34,12 @@ class _OnOffSettingsPageState extends State<OnOffSettingsPage> {
       final api = widget.session.protocol;
       final shutdown = await api.readShutdownPayloadEnable();
       final offByButton = await api.readOffByButton();
+      final autoPowerOn = await api.readAutoPowerOnEnable();
       if (!mounted) return;
       setState(() {
         _shutdownPayload = Lw006ParamHelpers.uint8(shutdown.data) == 1;
         _offByButton = Lw006ParamHelpers.uint8(offByButton.data) == 1;
+        _autoPowerOn = Lw006ParamHelpers.uint8(autoPowerOn.data) == 1;
       });
     });
   }
@@ -115,6 +119,26 @@ class _OnOffSettingsPageState extends State<OnOffSettingsPage> {
                   title: 'Power Off',
                   onTap: _powerOff,
                 ),
+                const SettingsDivider(),
+                SettingsSwitchRow(
+                  label: 'Auto Power On',
+                  value: _autoPowerOn,
+                  onChanged: (_) => _toggle(
+                    current: _autoPowerOn,
+                    write: (v) => api.writeAutoPowerOnEnable([v]),
+                    setLocal: (v) => _autoPowerOn = v,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  '*When the battery run out, the device will be turned on when the device is in charged.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.2,
+                    color: DeviceDetailTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 5),
               ],
             ),
           ),

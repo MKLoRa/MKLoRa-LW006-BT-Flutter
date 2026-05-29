@@ -80,19 +80,29 @@ class Lw006StorageNotifyParseResult {
 class Lw006DataCodec {
   Lw006DataCodec._();
 
+  /// Timing mode report points: one byte per point, 15-minute slots (native setTimePosReportPoints).
   static List<int> encodeTimePoints(List<Lw006TimePoint> points) {
     final bytes = <int>[];
     for (final point in points) {
-      bytes.addAll(Lw006ParamHelpers.uint16Bytes(point.toMinutes()));
+      if (point.hour == 0 && point.minute == 0) {
+        bytes.add(96);
+      } else {
+        bytes.add((point.hour * 60 + point.minute) ~/ 15);
+      }
     }
     return bytes;
   }
 
   static List<Lw006TimePoint> decodeTimePoints(List<int> data) {
     final points = <Lw006TimePoint>[];
-    for (var i = 0; i + 1 < data.length; i += 2) {
-      final minutes = Lw006ParamHelpers.uint16(data.sublist(i, i + 2));
-      points.add(Lw006TimePoint.fromMinutes(minutes));
+    for (final slot in data) {
+      final totalMinutes = (slot & 0xFF) * 15;
+      var hour = totalMinutes ~/ 60;
+      final minute = totalMinutes % 60;
+      if (hour == 24) {
+        hour = 0;
+      }
+      points.add(Lw006TimePoint(hour: hour, minute: minute));
     }
     return points;
   }
@@ -174,35 +184,68 @@ class Lw006DataCodec {
     return bytes;
   }
 
-  /// LW006 indicator bitmask (single byte), aligned with native IndicatorSettingsActivity.
+  /// LW006 indicator bitmask (2 bytes), aligned with native IndicatorSettingsActivity.
   static int encodeIndicator({
     required bool deviceState,
+    required bool lowPower,
+    required bool charging,
+    required bool fullCharge,
+    required bool bleConnection,
+    required bool networkCheck,
     required bool fix,
     required bool fixSuccess,
     required bool fixFail,
-    required bool networkCheck,
-    required bool lowPower,
-    required bool bleAdvCheck,
   }) {
-    return (fix ? 1 : 0) |
-        (fixSuccess ? 2 : 0) |
-        (fixFail ? 4 : 0) |
-        (networkCheck ? 8 : 0) |
-        (lowPower ? 16 : 0) |
-        (bleAdvCheck ? 32 : 0) |
-        (deviceState ? 64 : 0);
+    return (deviceState ? 1 : 0) |
+        (lowPower ? 2 : 0) |
+        (charging ? 4 : 0) |
+        (fullCharge ? 8 : 0) |
+        (bleConnection ? 16 : 0) |
+        (networkCheck ? 32 : 0) |
+        (fix ? 64 : 0) |
+        (fixSuccess ? 128 : 0) |
+        (fixFail ? 256 : 0);
   }
 
   static Map<String, bool> decodeIndicator(int value) {
-    final v = value & 0xFF;
     return {
-      'deviceState': (v & 64) == 64,
-      'fix': (v & 1) == 1,
-      'fixSuccess': (v & 2) == 2,
-      'fixFail': (v & 4) == 4,
-      'networkCheck': (v & 8) == 8,
-      'lowPower': (v & 16) == 16,
-      'bleAdvCheck': (v & 32) == 32,
+      'deviceState': (value & 1) == 1,
+      'lowPower': (value & 2) == 2,
+      'charging': (value & 4) == 4,
+      'fullCharge': (value & 8) == 8,
+      'bleConnection': (value & 16) == 16,
+      'networkCheck': (value & 32) == 32,
+      'fix': (value & 64) == 64,
+      'fixSuccess': (value & 128) == 128,
+      'fixFail': (value & 256) == 256,
+    };
+  }
+
+  static Map<String, bool> decodeSelftestStatus(int value) {
+    return {
+      'ok': value == 0,
+      'gpsFail': (value & 0x01) == 0x01,
+      'axisFail': (value & 0x02) == 0x02,
+      'flashFail': (value & 0x04) == 0x04,
+    };
+  }
+
+  static Map<String, int>? decodeBatteryInfo(List<int> data) {
+    if (data.length < 36) {
+      return null;
+    }
+    int readField(int offset) =>
+        Lw006ParamHelpers.bytesToInt(data.sublist(offset, offset + 4));
+    return {
+      'runtime': readField(0),
+      'advTimes': readField(4),
+      'flashTimes': readField(8),
+      'axisDuration': readField(12),
+      'bleFixDuration': readField(16),
+      'wifiFixDuration': readField(20),
+      'gpsFixDuration': readField(24),
+      'loraTransmissionTimes': readField(28),
+      'loraPower': readField(32),
     };
   }
 

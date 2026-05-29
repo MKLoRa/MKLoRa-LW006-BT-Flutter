@@ -34,20 +34,20 @@ class _PeriodicModePageState extends State<PeriodicModePage> {
         widget.session.protocol.readPeriodicModeReportInterval(),
       ]);
       if (!mounted) return;
-      _strategyIndex = Lw006ParamHelpers.uint8(results[0].data).clamp(0, 4);
-      _interval.text = Lw006ParamHelpers.int32(results[1].data).toString();
+      _strategyIndex = Lw006ParamHelpers.uint8(results[0].data).clamp(0, 7);
+      _interval.text = Lw006ParamHelpers.uint16(results[1].data).toString();
       setState(() {});
     });
   }
 
   Future<void> _pickStrategy() async {
-    final index = await showBottomPicker(context: context, options: Lw006OptionLists.posStrategy5, selectedIndex: _strategyIndex);
+    final index = await showBottomPicker(context: context, options: Lw006OptionLists.posStrategy8, selectedIndex: _strategyIndex);
     if (index != null) setState(() => _strategyIndex = index);
   }
 
   Future<void> _save() async {
     final value = int.tryParse(_interval.text.trim());
-    if (value == null || value < 5 || value > 65535) {
+    if (value == null || value < 1 || value > 14400) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Para error!')));
       return;
     }
@@ -55,7 +55,7 @@ class _PeriodicModePageState extends State<PeriodicModePage> {
       final api = widget.session.protocol;
       final ok = (await Future.wait([
         api.writePeriodicModePosStrategy([_strategyIndex]),
-        api.writePeriodicModeReportInterval(Lw006ParamHelpers.int32Bytes(value)),
+        api.writePeriodicModeReportInterval(Lw006ParamHelpers.uint16Bytes(value)),
       ])).every((r) => r);
       if (mounted) await saveWithToast(context, () async => ok);
     });
@@ -79,10 +79,10 @@ class _PeriodicModePageState extends State<PeriodicModePage> {
           SettingsCard(
             child: SettingsLabelRow(
               label: 'Position Strategy',
-              child: BlueValueButton(text: Lw006OptionLists.posStrategy5[_strategyIndex], onTap: _pickStrategy),
+              child: BlueValueButton(text: Lw006OptionLists.posStrategy8[_strategyIndex], onTap: _pickStrategy),
             ),
           ),
-          SettingsCard(child: SettingsLabelRow(label: 'Report Interval', child: SettingsTextField(controller: _interval, hint: '5~65535', suffix: 's'))),
+          SettingsCard(child: SettingsLabelRow(label: 'Report Interval', child: SettingsTextField(controller: _interval, hint: '1~14400', suffix: 'Mins'))),
         ],
       ),
     );

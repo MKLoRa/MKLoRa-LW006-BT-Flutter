@@ -7,6 +7,8 @@ import '../../../../../../ble/lw006_protocol_named_api.dart';
 import '../../../../../../ui/widgets/ble_loading_overlay.dart';
 import '../../../../../../ui/widgets/device_detail/bottom_picker_dialog.dart';
 import '../../../../../../ui/widgets/device_detail/settings_widgets.dart';
+import 'alert_alarm_setting_page.dart';
+import 'sos_alarm_setting_page.dart';
 import '../../device_detail_utils.dart';
 
 class AlarmFunctionPage extends StatefulWidget {
@@ -94,11 +96,39 @@ class _AlarmFunctionPageState extends State<AlarmFunctionPage> {
           ),
           SettingsCard(
             child: SettingsLabelRow(
-              label: 'Exit Alarm Time',
-              child: SettingsTextField(
-                controller: _exitTime,
-                hint: '5~15',
-                suffix: 's',
+              label: 'Exit Alarm Type',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Long press',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 8),
+                  SettingsTextField(
+                    controller: _exitTime,
+                    hint: '5~15',
+                    suffix: 's',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SettingsCard(
+            child: SettingsNavRow(
+              title: 'Alert Alarm Settings',
+              onTap: () => pushDetailPage(
+                context,
+                AlertAlarmSettingPage(session: widget.session),
+              ),
+            ),
+          ),
+          SettingsCard(
+            child: SettingsNavRow(
+              title: 'SOS Alarm Settings',
+              onTap: () => pushDetailPage(
+                context,
+                SosAlarmSettingPage(session: widget.session),
               ),
             ),
           ),

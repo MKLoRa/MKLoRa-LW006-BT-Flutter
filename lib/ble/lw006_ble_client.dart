@@ -16,6 +16,7 @@ class Lw006BleClient {
   BluetoothCharacteristic? _disconnectChar;
   BluetoothCharacteristic? _paramsChar;
   BluetoothCharacteristic? _storageDataNotifyChar;
+  BluetoothCharacteristic? _logNotifyChar;
   BluetoothCharacteristic? _modelNumberChar;
   BluetoothCharacteristic? _serialNumberChar;
   BluetoothCharacteristic? _firmwareRevisionChar;
@@ -29,6 +30,8 @@ class Lw006BleClient {
   final _disconnectController = StreamController<Lw006DisconnectEvent>.broadcast();
   final _storageNotifyController =
       StreamController<Lw006StorageNotifyParseResult>.broadcast();
+  final _logNotifyController = StreamController<String>.broadcast();
+  var _logNotifySubscribed = false;
   StreamSubscription<BluetoothConnectionState>? _connectionStateSubscription;
   Future<void> _requestChain = Future<void>.value();
 
@@ -36,6 +39,10 @@ class Lw006BleClient {
 
   Stream<Lw006StorageNotifyParseResult> get storageNotifyEvents =>
       _storageNotifyController.stream;
+
+  Stream<String> get logNotifyEvents => _logNotifyController.stream;
+
+  bool get isLogNotifyEnabled => _logNotifySubscribed;
 
   BluetoothDevice? get device => _device;
   bool get isConnected => _device?.isConnected ?? false;
@@ -84,6 +91,7 @@ class Lw006BleClient {
   }
 
   Future<void> disconnect() async {
+    await disableLogNotify();
     await _clearSubscriptions();
     final device = _device;
     _device = null;
@@ -146,7 +154,7 @@ class Lw006BleClient {
         packetIndex: packetIndex,
       ),
       key: key,
-      matcher: (value) => Lw006ProtocolCodec.isWriteSuccess(value, key),
+      matcher: (value) => Lw006ProtocolCodec.isWriteAck(value, key),
     );
     return Lw006ProtocolCodec.isWriteSuccess(response, key);
   }
@@ -185,6 +193,33 @@ class Lw006BleClient {
         name: 'manufacturerName',
       );
 
+  Future<void> enableLogNotify() async {
+    final characteristic = _logNotifyChar;
+    if (characteristic == null) {
+      throw Lw006ProtocolException('Log notify characteristic unavailable');
+    }
+    if (_logNotifySubscribed) {
+      return;
+    }
+    await characteristic.setNotifyValue(true);
+    await _notifySubscriptions['log']?.cancel();
+    _notifySubscriptions['log'] = characteristic.onValueReceived.listen(
+      (value) => _handleNotification('log', value),
+    );
+    _logNotifySubscribed = true;
+  }
+
+  Future<void> disableLogNotify() async {
+    final characteristic = _logNotifyChar;
+    if (characteristic == null || !_logNotifySubscribed) {
+      return;
+    }
+    await _notifySubscriptions['log']?.cancel();
+    _notifySubscriptions.remove('log');
+    await characteristic.setNotifyValue(false);
+    _logNotifySubscribed = false;
+  }
+
   Future<void> _discoverServices(BluetoothDevice device) async {
     final services = await device.discoverServices();
     final deviceInfo = _findService(services, Lw006Uuids.deviceInfoService);
@@ -208,6 +243,7 @@ class Lw006BleClient {
     _disconnectChar = _findCharacteristic(custom, Lw006Uuids.disconnectNotify);
     _paramsChar = _findCharacteristic(custom, Lw006Uuids.params);
     _storageDataNotifyChar = _findCharacteristic(custom, Lw006Uuids.storageDataNotify);
+    _logNotifyChar = _findCharacteristic(custom, Lw006Uuids.logNotify);
 
     if (_passwordChar == null || _paramsChar == null || _disconnectChar == null) {
       throw Lw006ProtocolException('Required custom characteristics not found');
@@ -253,6 +289,14 @@ class Lw006BleClient {
       final parsed = Lw006DataCodec.parseStorageNotify(value);
       if (parsed != null) {
         _storageNotifyController.add(parsed);
+      }
+      return;
+    }
+
+    if (channelKey == 'log') {
+      Lw006ProtocolLogger.logRx(channel: channelKey, payload: value);
+      if (value.isNotEmpty) {
+        _logNotifyController.add(String.fromCharCodes(value));
       }
       return;
     }
@@ -382,6 +426,7 @@ class Lw006BleClient {
     if (identical(characteristic, _passwordChar)) return 'password';
     if (identical(characteristic, _paramsChar)) return 'params';
     if (identical(characteristic, _storageDataNotifyChar)) return 'storageData';
+    if (identical(characteristic, _logNotifyChar)) return 'log';
     return characteristic.uuid.toString();
   }
 

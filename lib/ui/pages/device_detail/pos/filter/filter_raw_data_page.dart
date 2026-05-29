@@ -194,7 +194,7 @@ class _FilterRawDataPageState extends State<FilterRawDataPage> {
                 ),
                 const SettingsDivider(),
                 _navRow(
-                  title: 'BXP - T&S',
+                  title: 'BXP - Tag',
                   enabled: _bxpTag,
                   onTap: () => _openSubPage(FilterBxpTagPage(session: session)),
                 ),

@@ -23,7 +23,7 @@ class _TimingModePageState extends State<TimingModePage> {
   final List<Lw006TimePoint> _points = [];
 
   static List<String> _hours() => List.generate(24, (i) => i.toString().padLeft(2, '0'));
-  static List<String> _mins() => List.generate(60, (i) => i.toString().padLeft(2, '0'));
+  static List<String> _mins() => List.generate(4, (i) => (i * 15).toString().padLeft(2, '0'));
 
   @override
   void initState() {
@@ -38,7 +38,8 @@ class _TimingModePageState extends State<TimingModePage> {
         widget.session.protocol.readTimeModeReportTimePoint(),
       ]);
       if (!mounted) return;
-      _strategyIndex = Lw006ParamHelpers.uint8(results[0].data).clamp(0, 3);
+      _strategyIndex =
+          Lw006ParamHelpers.uint8(results[0].data).clamp(0, Lw006OptionLists.posStrategy7.length - 1);
       _points
         ..clear()
         ..addAll(Lw006DataCodec.decodeTimePoints(results[1].data));
@@ -48,7 +49,9 @@ class _TimingModePageState extends State<TimingModePage> {
 
   void _addPoint() {
     if (_points.length >= 10) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can set up to 10 time points!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You can set up to 10 time points!')),
+      );
       return;
     }
     setState(() => _points.add(Lw006TimePoint(hour: 0, minute: 0)));
@@ -59,34 +62,30 @@ class _TimingModePageState extends State<TimingModePage> {
   }
 
   Future<void> _pickHour(int index) async {
-    final selected = await showBottomPicker(context: context, options: _hours(), selectedIndex: _points[index].hour);
+    final selected = await showBottomPicker(
+      context: context,
+      options: _hours(),
+      selectedIndex: _points[index].hour,
+    );
     if (selected != null) setState(() => _points[index].hour = selected);
   }
 
   Future<void> _pickMin(int index) async {
-    final selected = await showBottomPicker(context: context, options: _mins(), selectedIndex: _points[index].minute);
-    if (selected != null) setState(() => _points[index].minute = selected);
+    final selected = await showBottomPicker(
+      context: context,
+      options: _mins(),
+      selectedIndex: _points[index].minute ~/ 15,
+    );
+    if (selected != null) setState(() => _points[index].minute = selected * 15);
   }
 
   Future<void> _pickStrategy() async {
-    final index = await showBottomPicker(context: context, options: Lw006OptionLists.posStrategy4, selectedIndex: _strategyIndex);
+    final index = await showBottomPicker(
+      context: context,
+      options: Lw006OptionLists.posStrategy7,
+      selectedIndex: _strategyIndex,
+    );
     if (index != null) setState(() => _strategyIndex = index);
-  }
-
-  List<int> _encodePoints() {
-    final minutes = <int>[];
-    for (final point in _points) {
-      if (point.hour == 0 && point.minute == 0) {
-        minutes.add(1440);
-      } else {
-        minutes.add(point.toMinutes());
-      }
-    }
-    final bytes = <int>[];
-    for (final value in minutes) {
-      bytes.addAll(Lw006ParamHelpers.uint16Bytes(value));
-    }
-    return bytes;
   }
 
   Future<void> _save() async {
@@ -94,7 +93,7 @@ class _TimingModePageState extends State<TimingModePage> {
       final api = widget.session.protocol;
       final ok = (await Future.wait([
         api.writeTimeModePosStrategy([_strategyIndex]),
-        api.writeTimeModeReportTimePoint(_encodePoints()),
+        api.writeTimeModeReportTimePoint(Lw006DataCodec.encodeTimePoints(_points)),
       ])).every((r) => r);
       if (mounted) await saveWithToast(context, () async => ok);
     });
@@ -112,26 +111,34 @@ class _TimingModePageState extends State<TimingModePage> {
           SettingsCard(
             child: SettingsLabelRow(
               label: 'Position Strategy',
-              child: BlueValueButton(text: Lw006OptionLists.posStrategy4[_strategyIndex], onTap: _pickStrategy),
+              child: BlueValueButton(
+                text: Lw006OptionLists.posStrategy7[_strategyIndex],
+                onTap: _pickStrategy,
+              ),
             ),
           ),
           for (var i = 0; i < _points.length; i++)
             SettingsCard(
-              child: Column(
-                children: [
-                  SettingsLabelRow(
-                    label: 'Time Point ${i + 1}',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        BlueValueButton(text: _points[i].hour.toString().padLeft(2, '0'), onTap: () => _pickHour(i)),
-                        const Text(' : '),
-                        BlueValueButton(text: _points[i].minute.toString().padLeft(2, '0'), onTap: () => _pickMin(i)),
-                        IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _removePoint(i)),
-                      ],
+              child: SettingsLabelRow(
+                label: 'Time Point ${i + 1}',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    BlueValueButton(
+                      text: _points[i].hour.toString().padLeft(2, '0'),
+                      onTap: () => _pickHour(i),
                     ),
-                  ),
-                ],
+                    const Text(' : '),
+                    BlueValueButton(
+                      text: _points[i].minute.toString().padLeft(2, '0'),
+                      onTap: () => _pickMin(i),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _removePoint(i),
+                    ),
+                  ],
+                ),
               ),
             ),
           SettingsCard(

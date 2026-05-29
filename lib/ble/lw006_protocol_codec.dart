@@ -75,19 +75,18 @@ class Lw006ProtocolCodec {
         value[4] == 0x01;
   }
 
-  static bool isWriteSuccess(List<int> value, int key) {
+  static bool isWriteAck(List<int> value, int key) {
     if (value.length < 5) {
       return false;
     }
-    if (value[0] != Lw006ProtocolConstants.headSingle ||
-        value[1] != Lw006ProtocolConstants.flagWrite) {
-      return false;
-    }
-    if ((value[2] & 0xFF) != key) {
-      return false;
-    }
-    final length = value[3];
-    return length == 0x01 && value[4] == 0x01;
+    return value[0] == Lw006ProtocolConstants.headSingle &&
+        value[1] == Lw006ProtocolConstants.flagWrite &&
+        (value[2] & 0xFF) == key &&
+        value[3] == 0x01;
+  }
+
+  static bool isWriteSuccess(List<int> value, int key) {
+    return isWriteAck(value, key) && value[4] == 0x01;
   }
 
   static Lw006ParsedFrame? parseReadResponse(List<int> value) {

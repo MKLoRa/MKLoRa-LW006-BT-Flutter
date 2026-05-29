@@ -19,7 +19,9 @@ class IndicatorSettingsPage extends StatefulWidget {
 class _IndicatorSettingsPageState extends State<IndicatorSettingsPage> {
   bool _deviceState = false;
   bool _lowPower = false;
-  bool _bleAdvCheck = false;
+  bool _charging = false;
+  bool _fullCharge = false;
+  bool _bleConnection = false;
   bool _networkCheck = false;
   bool _fix = false;
   bool _fixSuccess = false;
@@ -42,7 +44,9 @@ class _IndicatorSettingsPageState extends State<IndicatorSettingsPage> {
       setState(() {
         _deviceState = decoded['deviceState']!;
         _lowPower = decoded['lowPower']!;
-        _bleAdvCheck = decoded['bleAdvCheck']!;
+        _charging = decoded['charging']!;
+        _fullCharge = decoded['fullCharge']!;
+        _bleConnection = decoded['bleConnection']!;
         _networkCheck = decoded['networkCheck']!;
         _fix = decoded['fix']!;
         _fixSuccess = decoded['fixSuccess']!;
@@ -55,15 +59,17 @@ class _IndicatorSettingsPageState extends State<IndicatorSettingsPage> {
     await runWithBleLoading(context, () async {
       final value = Lw006DataCodec.encodeIndicator(
         deviceState: _deviceState,
+        lowPower: _lowPower,
+        charging: _charging,
+        fullCharge: _fullCharge,
+        bleConnection: _bleConnection,
+        networkCheck: _networkCheck,
         fix: _fix,
         fixSuccess: _fixSuccess,
         fixFail: _fixFail,
-        networkCheck: _networkCheck,
-        lowPower: _lowPower,
-        bleAdvCheck: _bleAdvCheck,
-      );
+      ) | 512 | 1024;
       final ok = await widget.session.protocol
-          .writeIndicatorStatus(Lw006ParamHelpers.single(value));
+          .writeIndicatorStatus(Lw006ParamHelpers.uint16Bytes(value));
       if (mounted) await saveWithToast(context, () async => ok);
     });
   }
@@ -98,12 +104,24 @@ class _IndicatorSettingsPageState extends State<IndicatorSettingsPage> {
               value: _lowPower,
               onChanged: (v) => setState(() => _lowPower = v),
             ),
+            const SettingsDivider(),
+            SettingsSwitchRow(
+              label: 'Charging',
+              value: _charging,
+              onChanged: (v) => setState(() => _charging = v),
+            ),
+            const SettingsDivider(),
+            SettingsSwitchRow(
+              label: 'Full Charge',
+              value: _fullCharge,
+              onChanged: (v) => setState(() => _fullCharge = v),
+            ),
           ]),
           _groupCard([
             SettingsSwitchRow(
-              label: 'Bluetooth Broadcast',
-              value: _bleAdvCheck,
-              onChanged: (v) => setState(() => _bleAdvCheck = v),
+              label: 'Bluetooth Connection',
+              value: _bleConnection,
+              onChanged: (v) => setState(() => _bleConnection = v),
             ),
             const SettingsDivider(),
             SettingsSwitchRow(
